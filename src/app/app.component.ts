@@ -9,6 +9,7 @@ import { DatePipe } from '@angular/common';
 import { MyIndicator } from './Indicators/MyIndicator';
 import { Indicators } from '@amcharts/amcharts5/.internal/charts/stock/toolbar/IndicatorControl';
 import { any } from '@amcharts/amcharts5/.internal/core/util/Array';
+import { RSI_EMA } from './Indicators/RSI-EMA';
 
 @Component({
   selector: 'app-root',
@@ -134,7 +135,7 @@ export class AppComponent implements OnInit {
                         let mainPanel = stockChart.panels.push(am5stock.StockPanel.new(root, {
                           wheelY: "zoomX",
                           panX: true,
-                          panY: true
+                          panY: false
                         }));
 
 
@@ -143,9 +144,9 @@ export class AppComponent implements OnInit {
                         // https://www.amcharts.com/docs/v5/charts/xy-chart/axes/
                         let valueAxis = mainPanel.yAxes.push(am5xy.ValueAxis.new(root, {
                           renderer: am5xy.AxisRendererY.new(root, {
-                            pan: "zoom"
+                            pan: "zoom",
                           }),
-                          extraMin: 0.1, // adds some space for for main series
+                          extraMin: 0.1, // adds some space for the main series
                           tooltip: am5.Tooltip.new(root, {}),
                           numberFormat: "#,###.00",
                           extraTooltipPrecision: 2
@@ -156,6 +157,7 @@ export class AppComponent implements OnInit {
                             timeUnit: "day",
                             count: 1
                           },
+                          groupData: true,
                           renderer: am5xy.AxisRendererX.new(root, {}),
                           tooltip: am5.Tooltip.new(root, {})
                         }));
@@ -275,6 +277,7 @@ export class AppComponent implements OnInit {
                             timeUnit: "day",
                             count: 1
                           },
+                          groupData: true,
                           renderer: am5xy.AxisRendererX.new(root, {})
                         }));
 
@@ -512,7 +515,8 @@ export class AppComponent implements OnInit {
                           });
 
                           // Load data for all series (main series + comparisons)
-                          const promises = [];
+                          const promises: unknown[] = [];
+
                           promises.push(loadData(valueSeries.get("name") as string, [valueSeries, volumeSeries, sbSeries]))
                           am5.array.each(stockChart.getPrivate("comparedSeries", []), function(series) {
                             promises.push(loadData(series.get("name")!, [series]));
@@ -520,7 +524,24 @@ export class AppComponent implements OnInit {
 
                           // Once data loading is done, set `baseInterval` on the DateAxis
                           Promise.all(promises).then(function() {
+                            let chosenitem: string = ev.item.interval.timeUnit as string;
+
+                            if (chosenitem === "day") {
+                              dateAxis.set("groupData", true);
+                            } else if (chosenitem === "month") { 
+                              dateAxis.set("groupData", false);
+                            } else if (chosenitem === "week") {
+                              dateAxis.set("groupData", false);
+                            }
                             dateAxis.set("baseInterval", ev.item.interval);
+
+                            if (chosenitem === "day") {
+                              sbDateAxis.set("groupData", true);
+                            } else if (chosenitem === "month") { 
+                              sbDateAxis.set("groupData", false);
+                            } else if (chosenitem === "week") {
+                              sbDateAxis.set("groupData", false);
+                            }
                             sbDateAxis.set("baseInterval", ev.item.interval);
                           });
                         });
@@ -562,6 +583,18 @@ export class AppComponent implements OnInit {
                                 legend: valueLegend
                               }));
                               return myIndicator;
+                            }
+                          },
+                          {
+                            id: "RSI_EMA",
+                            name: "RSI and EMA",
+                            callback: function() {
+                              const RSI_EMAIndicator = stockChart.indicators.push(RSI_EMA.new(root, {
+                                stockChart: stockChart,
+                                stockSeries: valueSeries,
+                                legend: valueLegend
+                              }));
+                              return RSI_EMAIndicator;
                             }
                           }]; // = <any[]>([]);
 
